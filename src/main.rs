@@ -213,8 +213,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let json_format = json!({
             "treasury_balance": format!("{}", total_info.treasury_balance),
             "transferable_exclude_treasury": format!("{}", total_info.transferable_exclude_treasury),
-            "vesting_locking": format!("{}", total_info.vesting_locking),
-            "vote_locking": format!("{}", total_info.vote_locking),
+            "locking": format!("{}", total_info.vesting_locking + total_info.vote_locking),
             "reserved": format!("{}", total_info.origin.reserved),
             "block_number": total_info.origin.block
         });
