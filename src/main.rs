@@ -59,8 +59,7 @@ pub struct BalanceInfo {
 pub struct TotalInfo {
     origin: BalanceInfo,
     transferable_exclude_treasury: u128,
-    vesting_locking: u128,
-    vote_locking: u128,
+    locked: u128,
     treasury_balance: u128,
 }
 
@@ -78,8 +77,7 @@ impl TotalInfo {
                 treasury: TREASURY.to_string(),
             },
             transferable_exclude_treasury: 0,
-            vesting_locking: 0,
-            vote_locking: 0,
+            locked: 0,
             treasury_balance: 0
         }
     }
@@ -90,14 +88,13 @@ impl TotalInfo {
             .saturating_add(self.origin.reserved)
     }
 
-    pub fn total_vesting_locking(&self) -> u128 {
+    pub fn total_misc_frozen(&self) -> u128 {
         self
             .origin
             .misc_frozen
-            .saturating_sub(self.origin.fee_frozen)
     }
 
-    pub fn total_vote_locking(&self) -> u128 {
+    pub fn total_fee_frozen(&self) -> u128 {
         self
             .origin
             .fee_frozen
@@ -107,15 +104,13 @@ impl TotalInfo {
         self
             .origin
             .free
-            .saturating_sub(self.total_vesting_locking())
-            .saturating_sub(self.total_vote_locking())
+            .saturating_sub(self.total_misc_frozen().max(self.total_fee_frozen()))
             .saturating_sub(self.treasury_balance)
     }
 
     pub fn sanitize(&mut self) {
         self.transferable_exclude_treasury = self.total_transferable_exclude_treasury();
-        self.vesting_locking = self.total_vesting_locking();
-        self.vote_locking = self.total_vote_locking();
+        self.locked = self.total_misc_frozen().max(self.total_fee_frozen());
     }
 }
 
@@ -204,8 +199,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             total_info
                 .treasury_balance
                 .saturating_add(total_info.transferable_exclude_treasury)
-                .saturating_add(total_info.vesting_locking)
-                .saturating_add(total_info.vote_locking)
+                .saturating_add(total_info.locked)
                 .saturating_add(total_info.origin.reserved)
         );
     }
@@ -213,7 +207,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let json_format = json!({
             "treasury_balance": format!("{}", total_info.treasury_balance),
             "transferable_exclude_treasury": format!("{}", total_info.transferable_exclude_treasury),
-            "locking": format!("{}", total_info.vesting_locking + total_info.vote_locking),
+            "locked": format!("{}", total_info.locked),
             "reserved": format!("{}", total_info.origin.reserved),
             "block_number": total_info.origin.block
         });
