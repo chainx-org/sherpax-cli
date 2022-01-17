@@ -24,12 +24,11 @@ OPTIONS:
 ```bash
 $ ./target/release/sherpax-cli check-balance --url ws://127.0.0.1:9977
 {
-    "block_number":46,
-    "reserved":"0",
-    "transferable_exclude_treasury":"3629783363038086000000000",
-    "treasury_balance":"9322852245775200000000000",
-    "vesting_locking":"8047364391186714000000000",
-    "vote_locking":"0"
+  "block_number":56653,
+  "locked":"10679907883731404000000000",
+  "reserved":"151780000000000000000",
+  "transferable_exclude_treasury":"1017088090493396000000000",
+  "treasury_balance":"9302852245775200000000000"
 }
 ```
 
