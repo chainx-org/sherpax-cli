@@ -4,7 +4,7 @@
 
 ```bash
 $ ./target/release/sherpax-cli check-balance --help
-sherpax-cli-check-balance 0.1.0
+sherpax-cli-check-balance 0.2.0
 Arguments required for creating and sending an extrinsic to a sherpax node
 
 USAGE:
@@ -24,11 +24,11 @@ OPTIONS:
 ```bash
 $ ./target/release/sherpax-cli check-balance --url ws://127.0.0.1:9977
 {
-  "block_number":56653,
-  "locked":"10679907883731404000000000",
-  "reserved":"151780000000000000000",
-  "transferable_exclude_treasury":"1017088090493396000000000",
-  "treasury_balance":"9302852245775200000000000"
+  "block_number":1311526,
+  "locked":"11052331985778826625796863",
+  "reserved":"1005836000000000000000",
+  "transferable_exclude_treasury":"1642896563029881356280018",
+  "treasury_balance":"8303769065775200000000000"
 }
 ```
 

@@ -3,7 +3,6 @@ use sp_core::crypto::{AccountId32, Ss58Codec};
 use subxt::{BlockNumber, ClientBuilder};
 use structopt::StructOpt;
 
-const TOTAL_SUPPLY: u128 = 21_000_000_000_000_000_000_000_000u128;
 const MAX_PAG_SIZE: u32 = 1000;
 const TREASURY: &str = "5S7WgdAXVK7mh8REvXfk9LdHs3Xqu9B2E9zzY8e4LE8Gg2ZX";
 
@@ -46,7 +45,9 @@ pub(crate) struct ExtrinsicOpts {
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct BalanceInfo {
     free: u128,
+    locked: u128,
     reserved: u128,
+    transferable: u128,
     misc_frozen: u128,
     fee_frozen: u128,
     accounts: u32,
@@ -59,8 +60,8 @@ pub struct BalanceInfo {
 pub struct TotalInfo {
     origin: BalanceInfo,
     transferable_exclude_treasury: u128,
-    locked: u128,
     treasury_balance: u128,
+    total_supply: u128,
 }
 
 impl TotalInfo {
@@ -68,7 +69,9 @@ impl TotalInfo {
         Self {
             origin: BalanceInfo {
                 free: 0,
+                locked: 0,
                 reserved: 0,
+                transferable: 0,
                 misc_frozen: 0,
                 fee_frozen: 0,
                 accounts: 0,
@@ -77,8 +80,8 @@ impl TotalInfo {
                 treasury: TREASURY.to_string(),
             },
             transferable_exclude_treasury: 0,
-            locked: 0,
-            treasury_balance: 0
+            treasury_balance: 0,
+            total_supply: 0
         }
     }
 
@@ -88,29 +91,16 @@ impl TotalInfo {
             .saturating_add(self.origin.reserved)
     }
 
-    pub fn total_misc_frozen(&self) -> u128 {
-        self
-            .origin
-            .misc_frozen
-    }
-
-    pub fn total_fee_frozen(&self) -> u128 {
-        self
-            .origin
-            .fee_frozen
-    }
-
     pub fn total_transferable_exclude_treasury(&self) -> u128 {
         self
             .origin
-            .free
-            .saturating_sub(self.total_misc_frozen().max(self.total_fee_frozen()))
+            .transferable
             .saturating_sub(self.treasury_balance)
     }
 
     pub fn sanitize(&mut self) {
         self.transferable_exclude_treasury = self.total_transferable_exclude_treasury();
-        self.locked = self.total_misc_frozen().max(self.total_fee_frozen());
+        self.total_supply = self.total_balance();
     }
 }
 
@@ -179,6 +169,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         total_info.origin.misc_frozen += account.data.misc_frozen;
         total_info.origin.fee_frozen += account.data.fee_frozen;
 
+        let locked = account.data.misc_frozen.max(account.data.fee_frozen);
+        total_info.origin.locked += locked;
+        total_info.origin.transferable += account.data.free - locked;
+
         if extrinsic_opts.print_details && total_info.origin.accounts % 10000 == 0 {
             total_info.origin.elapsed = now.elapsed().as_secs();
             println!("{}", serde_json::to_string(&total_info)?);
@@ -192,14 +186,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if extrinsic_opts.print_details {
         println!("{}", serde_json::to_string(&total_info)?);
 
-        assert_eq!(TOTAL_SUPPLY, total_info.total_balance());
-
         assert_eq!(
-            TOTAL_SUPPLY,
+            total_info.total_balance(),
             total_info
                 .treasury_balance
                 .saturating_add(total_info.transferable_exclude_treasury)
-                .saturating_add(total_info.locked)
+                .saturating_add(total_info.origin.locked)
                 .saturating_add(total_info.origin.reserved)
         );
     }
@@ -207,7 +199,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let json_format = json!({
             "treasury_balance": format!("{}", total_info.treasury_balance),
             "transferable_exclude_treasury": format!("{}", total_info.transferable_exclude_treasury),
-            "locked": format!("{}", total_info.locked),
+            "locked": format!("{}", total_info.origin.locked),
             "reserved": format!("{}", total_info.origin.reserved),
             "block_number": total_info.origin.block
         });
